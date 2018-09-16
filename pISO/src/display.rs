@@ -10,9 +10,7 @@ pub const DISPLAY_WIDTH: usize = 128;
 pub const DISPLAY_HEIGHT: usize = 64;
 
 #[allow(unused)]
-enum SSD1306Command {
-    // Constants
-    I2CAddress = 0x3C, // 011110+SA0+RW - 0x3C or 0x3D
+enum SH1106Command {
     SetContrast = 0x81,
     DisplayAllOnResume = 0xA4,
     DisplayAllOn = 0xA5,
@@ -26,30 +24,20 @@ enum SSD1306Command {
     SetDisplayClockDiv = 0xD5,
     SetPrecharge = 0xD9,
     SetMultiplex = 0xA8,
+    SetPage = 0xB0,
     SetLowColumn = 0x00,
     SetHighColumn = 0x10,
     SetStartLine = 0x40,
     MemoryMode = 0x20,
-    ColumnAddr = 0x21,
-    PageAddr = 0x22,
     ComScanInc = 0xC0,
     ComScanDec = 0xC8,
     SegRemap = 0xA0,
     ChargePump = 0x8D,
     ExternalVCC = 0x1,
     SwitchcapVcc = 0x2,
-
-    // Scrolling constants
-    ActivateScroll = 0x2F,
-    DeactivateScroll = 0x2E,
-    SetVerticalScrollArea = 0xA3,
-    RightHorizontalScroll = 0x26,
-    LeftHorizontalScroll = 0x27,
-    VerticalAndRightHorizontalScroll = 0x29,
-    VerticalAndLeftHorizontalScroll = 0x2A,
 }
 
-impl Into<u8> for SSD1306Command {
+impl Into<u8> for SH1106Command {
     fn into(self) -> u8 {
         self as u8
     }
@@ -84,7 +72,7 @@ impl LedDisplay {
             .build();
         spi.configure(&options)?;
 
-        let dc_pin = Pin::new(19);
+        let dc_pin = Pin::new(24);
         dc_pin.export()?;
         dc_pin.set_direction(Direction::Out)?;
 
@@ -131,32 +119,32 @@ impl Display for LedDisplay {
     fn on(&mut self) -> error::Result<()> {
         self.reset()?;
 
-        self.send_spi_command(SSD1306Command::DisplayOff)?;
-        self.send_spi_command(SSD1306Command::SetDisplayClockDiv)?;
+        self.send_spi_command(SH1106Command::DisplayOff)?;
+        self.send_spi_command(SH1106Command::SetDisplayClockDiv)?;
         self.send_spi_command(0x80)?; // the suggested ratio 0x80
-        self.send_spi_command(SSD1306Command::SetMultiplex)?;
+        self.send_spi_command(SH1106Command::SetMultiplex)?;
         self.send_spi_command(0x3F)?;
-        self.send_spi_command(SSD1306Command::SetDisplayOffset)?;
+        self.send_spi_command(SH1106Command::SetDisplayOffset)?;
         self.send_spi_command(0x0)?; // no offset
-        self.send_spi_command((SSD1306Command::SetStartLine as u8) | 0x0)?; // line #0
-        self.send_spi_command(SSD1306Command::ChargePump)?;
+        self.send_spi_command((SH1106Command::SetStartLine as u8) | 0x0)?; // line #0
+        self.send_spi_command(SH1106Command::ChargePump)?;
         self.send_spi_command(0x14)?;
-        self.send_spi_command(SSD1306Command::MemoryMode)?;
+        self.send_spi_command(SH1106Command::MemoryMode)?;
         self.send_spi_command(0x00)?; // 0x0 act like ks0108
-        self.send_spi_command((SSD1306Command::SegRemap as u8) | 0x1)?;
-        self.send_spi_command(SSD1306Command::ComScanDec)?;
-        self.send_spi_command(SSD1306Command::SetComPins)?;
+        self.send_spi_command((SH1106Command::SegRemap as u8) | 0x1)?;
+        self.send_spi_command(SH1106Command::ComScanDec)?;
+        self.send_spi_command(SH1106Command::SetComPins)?;
         self.send_spi_command(0x12)?;
-        self.send_spi_command(SSD1306Command::SetContrast)?;
+        self.send_spi_command(SH1106Command::SetContrast)?;
         self.send_spi_command(0xCF)?;
-        self.send_spi_command(SSD1306Command::SetPrecharge)?;
+        self.send_spi_command(SH1106Command::SetPrecharge)?;
         self.send_spi_command(0xF1)?;
-        self.send_spi_command(SSD1306Command::SetVComDetect)?;
+        self.send_spi_command(SH1106Command::SetVComDetect)?;
         self.send_spi_command(0x40)?;
-        self.send_spi_command(SSD1306Command::DisplayAllOnResume)?;
-        self.send_spi_command(SSD1306Command::NormalDisplay)?;
+        self.send_spi_command(SH1106Command::DisplayAllOnResume)?;
+        self.send_spi_command(SH1106Command::NormalDisplay)?;
 
-        self.send_spi_command(SSD1306Command::DisplayOn)
+        self.send_spi_command(SH1106Command::DisplayOn)
     }
 
     fn reset(&mut self) -> error::Result<()> {
@@ -181,18 +169,18 @@ impl Display for LedDisplay {
         self.contents.set_height(self.height);
 
         let width = self.contents.width() as u8;
-        self.send_spi_command(SSD1306Command::ColumnAddr)?;
-        self.send_spi_command(0)?;
-        self.send_spi_command(width - 1)?;
-        self.send_spi_command(SSD1306Command::PageAddr)?;
-        self.send_spi_command(0)?;
-        self.send_spi_command(width / 8 - 1)?;
-
         let pages = self.contents.height() / 8;
-        let mut data = vec![];
+        let mut data;
 
         if self.inverted {
             for page in (0..pages).rev() {
+                data = vec![];
+
+                // SH1106 has width 132 internally: offset first two columns = 0x02
+                self.send_spi_command((SH1106Command::SetHighColumn as u8) | 0x0)?;
+                self.send_spi_command((SH1106Command::SetLowColumn as u8) | 0x2)?;
+                self.send_spi_command((SH1106Command::SetPage as u8) | 7 - page as u8)?;
+
                 for x in (0..width).rev() {
                     let mut bits: u8 = 0;
                     for bit in 0..8 {
@@ -201,9 +189,18 @@ impl Display for LedDisplay {
                     }
                     data.push(bits);
                 }
+
+                self.send_spi_data(&data)?;
             }
         } else {
             for page in 0..pages {
+                data = vec![];
+
+                // SH1106 has width 132 internally: offset first two columns = 0x02
+                self.send_spi_command((SH1106Command::SetHighColumn as u8) | 0x0)?;
+                self.send_spi_command((SH1106Command::SetLowColumn as u8) | 0x2)?;
+                self.send_spi_command((SH1106Command::SetPage as u8) | page as u8)?;
+
                 for x in 0..width {
                     let mut bits: u8 = 0;
                     for bit in 0..8 {
@@ -212,9 +209,11 @@ impl Display for LedDisplay {
                     }
                     data.push(bits);
                 }
+
+                self.send_spi_data(&data)?;
             }
         }
-        self.send_spi_data(&data)
+        Ok(())
     }
 }
 
