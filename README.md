@@ -1,30 +1,19 @@
-pISO
-====
+pISO with SH1106 + Joystick support (1.3inch OLED HAT)
+======================================================
 
-[![Build Status](https://travis-ci.org/ALSchwalm/pISO.svg?branch=master)](https://travis-ci.org/ALSchwalm/pISO)
-[![pipeline status](https://gitlab.com/ALSchwalm/pISO/badges/master/pipeline.svg)](https://gitlab.com/ALSchwalm/pISO/commits/master)
+This fork has support for the Waveshare 1.3inch OLED HAT and the Zero Stem.
 
-First, clone the project with `git clone --recursive https://github.com/ALSchwalm/pISO.git`
+Left and right directions on the joystick and KEY1-3 are currently not implemented.
 
-Building with docker
---------------------
+Building
+--------
+https://github.com/ALSchwalm/pISO/blob/master/README.md
 
-Just have make and docker installed and run:
+Links
+--------
+https://www.waveshare.com/wiki/1.3inch_OLED_HAT
 
-    make sdimage
-
-Building without docker
------------------------
-
-Without docker, you will need to first ensure you have all of the appropriate
-dependencies installed (see [this list](https://buildroot.org/downloads/manual/manual.html#requirement) ).
-
-    cd buildroot
-    cp configs/piso_defconfig .config
-    make
-
-Either approach should produce a file in `buildroot/output/images/sdcard.img`. This file can
-be written directly to an SD card (e.x., with `dd`).
+https://zerostem.io
 
 License
 -------
