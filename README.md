@@ -1,9 +1,9 @@
-this is a alpha test from No0ne pISO with SH1106 + Joystick support (1.3inch OLED HAT)
+this is a work in progress fork from No0ne pISO with SH1106 + Joystick support (1.3inch OLED HAT) with help of unknowbytes
 ======================================================
 
 This fork has support for the Waveshare 1.3inch OLED HAT and the Zero Stem.
 
-Left and right directions on the joystick and KEY2 and KEY3 should not be implemented yet.
+Tentative to have key 1 implemented in parallel of joystick push
 
 ![Photo](https://raw.githubusercontent.com/No0ne/pISO/master/assets/SH1106.jpg)
 
